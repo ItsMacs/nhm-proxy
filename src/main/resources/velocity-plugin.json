@@ -1,0 +1,11 @@
+{
+  "id": "nhm-proxy",
+  "name": "nhm-proxy",
+  "version": "${version}",
+  "main": "eu.macsworks.projectnhm.nhmProxy.NhmProxy",
+  "description": "NHM Proxy plugin",
+  "url": "project-nhm.com",
+  "authors": [
+    "Alice"
+  ]
+}
