@@ -6,6 +6,7 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.scheduler.ScheduledTask;
 import eu.macsworks.projectnhm.nhmProxy.api.NHMProxyLifecycledObject;
 import eu.macsworks.projectnhm.nhmProxy.config.Config;
 import eu.macsworks.projectnhm.nhmProxy.managers.NHMProxyManager;
@@ -19,7 +20,10 @@ import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -44,6 +48,8 @@ public class NhmProxy {
     @Getter(AccessLevel.PRIVATE)
     private final Map<Class<? extends NHMProxyManager>, NHMProxyManager> managers = new HashMap<>();
 
+    private final List<ScheduledTask> tasks = new ArrayList<>();
+
     public NhmProxy() {
         setInstance(this);
     }
@@ -61,6 +67,10 @@ public class NhmProxy {
 
         addManager(new RedisManager(this));
         addManager(new ServerManager(this));
+
+        tasks.add(getProxy().getScheduler().buildTask(this, () -> {
+
+        }).repeat(Duration.ofMillis(500)).schedule());
     }
 
     private void addManager(NHMProxyManager manager){
@@ -95,6 +105,7 @@ public class NhmProxy {
         long timeDisStart = System.currentTimeMillis();
 
         managers.values().forEach(NHMProxyLifecycledObject::destroy);
+        tasks.forEach(ScheduledTask::cancel);
 
         getLogger().info(String.format("Disabling done (%sms)",  System.currentTimeMillis() - timeDisStart));
     }
