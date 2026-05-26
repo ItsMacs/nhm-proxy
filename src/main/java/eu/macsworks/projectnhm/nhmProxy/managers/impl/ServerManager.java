@@ -32,8 +32,14 @@ public class ServerManager extends NHMProxyManager {
     public void onTick(){
         List<String> activeServers = new ArrayList<>();
 
-        activeServers.addAll(redisManager.getActiveServers(false));
-        activeServers.addAll(redisManager.getActiveServers(true));
+        List<String> activeLobbyPods = redisManager.getActiveServers(false);
+        List<String> activeGamePods = redisManager.getActiveServers(true);
+
+        activeServers.addAll(activeLobbyPods);
+        activeServers.addAll(activeGamePods);
+
+        activeLobbyPods.stream().filter(s -> !lobbyPods.contains(s)).forEach(this::addTrackedLobbyPod);
+        activeGamePods.stream().filter(s -> !gamePods.contains(s)).forEach(this::addTrackedGamePod);
 
         List<String> missingServers = new ArrayList<>();
         missingServers.addAll(lobbyPods.stream().filter(s -> !activeServers.contains(s)).toList());
