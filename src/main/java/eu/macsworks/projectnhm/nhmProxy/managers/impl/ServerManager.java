@@ -4,6 +4,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import eu.macsworks.projectnhm.nhmProxy.NhmProxy;
 import eu.macsworks.projectnhm.nhmProxy.managers.NHMProxyManager;
+import eu.macsworks.projectnhm.nhmProxy.pojo.HeartbeatPayload;
 import net.kyori.adventure.text.Component;
 
 import java.util.*;
@@ -13,7 +14,7 @@ public class ServerManager extends NHMProxyManager {
     private final List<String> lobbyPods = new ArrayList<>();
     private final List<String> gamePods = new ArrayList<>();
 
-    private final List<RedisManager.HeartbeatPayload.GameSnapshot> games = new ArrayList<>();
+    private final List<HeartbeatPayload.GameSnapshot> games = new ArrayList<>();
 
     private final RedisManager redisManager;
 
@@ -30,6 +31,18 @@ public class ServerManager extends NHMProxyManager {
 
     @Override
     public void onTick(){
+        games.clear();
+        games.addAll(redisManager.getAllGameSnapshots());
+
+        manageDeadPods();
+    }
+
+    @Override
+    public void onDestroy(){
+
+    }
+
+    private void manageDeadPods(){
         List<String> activeServers = new ArrayList<>();
 
         List<String> activeLobbyPods = redisManager.getActiveServers(false);
@@ -60,11 +73,6 @@ public class ServerManager extends NHMProxyManager {
         });
     }
 
-    @Override
-    public void onDestroy(){
-
-    }
-
     public void sendPlayerToLobby(Player player){
         Optional<RegisteredServer> bestLobby = getBestLobbyServer();
         if(bestLobby.isEmpty()){
@@ -76,18 +84,18 @@ public class ServerManager extends NHMProxyManager {
     }
 
     public void sendPlayerToGameSpecific(Player player, String gameID){
-        Optional<RedisManager.HeartbeatPayload.GameSnapshot> foundGame = games.stream().filter(snapshot -> snapshot.gameID().equalsIgnoreCase(gameID)).findFirst();
+        Optional<HeartbeatPayload.GameSnapshot> foundGame = games.stream().filter(snapshot -> snapshot.gameID().equalsIgnoreCase(gameID)).findFirst();
 
         sendPlayerToGame(player, foundGame);
     }
 
     public void sendPlayerToGameBest(Player player, String gameType){
-        Optional<RedisManager.HeartbeatPayload.GameSnapshot> foundGame = getBestGameServer(gameType);
+        Optional<HeartbeatPayload.GameSnapshot> foundGame = getBestGameServer(gameType);
 
         sendPlayerToGame(player, foundGame);
     }
 
-    private void sendPlayerToGame(Player player, Optional<RedisManager.HeartbeatPayload.GameSnapshot> gameSnapshot){
+    private void sendPlayerToGame(Player player, Optional<HeartbeatPayload.GameSnapshot> gameSnapshot){
         if(gameSnapshot.isEmpty()){
             player.sendMessage(Component.text(String.format("Error: Game not found. Wait a few seconds and retry.")));
             return;
@@ -115,11 +123,11 @@ public class ServerManager extends NHMProxyManager {
         return getLobbyServerPods().stream().max(Comparator.comparingInt(server -> server.getPlayersConnected().size()));
     }
 
-    public Optional<RedisManager.HeartbeatPayload.GameSnapshot> getBestGameServer(String gameMode){
+    public Optional<HeartbeatPayload.GameSnapshot> getBestGameServer(String gameMode){
         return games.stream()
                 .filter(snapshot -> snapshot.players().size() < snapshot.maxPlayers()
                         && snapshot.gameType().equalsIgnoreCase(gameMode)
-                        && snapshot.gameState() == RedisManager.HeartbeatPayload.RedisGameState.LOBBY)
+                        && snapshot.gameState() == HeartbeatPayload.RedisGameState.LOBBY)
 
                 .max(Comparator.comparingInt(snapshot -> snapshot.players().size()));
     }

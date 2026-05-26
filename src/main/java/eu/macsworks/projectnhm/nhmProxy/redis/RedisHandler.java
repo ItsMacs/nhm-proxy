@@ -62,6 +62,19 @@ public class RedisHandler {
         }).schedule();
     }
 
+    public String get(String key) {
+        try (Jedis jedis = pool.getResource()) {
+            return jedis.get(key);
+        }
+    }
+
+    public List<String> mget(String... keys) {
+        if (keys.length == 0) return List.of();
+        try (Jedis jedis = pool.getResource()) {
+            return jedis.mget(keys);
+        }
+    }
+
     public Set<String> keys(String pattern) {
         Set<String> keys = new HashSet<>();
         ScanParams params = new ScanParams().match(pattern).count(1000);

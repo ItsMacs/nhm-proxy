@@ -3,6 +3,9 @@ package eu.macsworks.projectnhm.nhmProxy.managers.impl;
 import com.velocitypowered.api.proxy.Player;
 import eu.macsworks.projectnhm.nhmProxy.NhmProxy;
 import eu.macsworks.projectnhm.nhmProxy.managers.NHMProxyManager;
+import eu.macsworks.projectnhm.nhmProxy.pojo.HeartbeatPayload;
+import eu.macsworks.projectnhm.nhmProxy.pojo.LobbyHeartbeatPayload;
+import eu.macsworks.projectnhm.nhmProxy.redis.HeartbeatHandler;
 import eu.macsworks.projectnhm.nhmProxy.redis.RedisHandler;
 import eu.macsworks.projectnhm.nhmProxy.redis.pubsub.impl.PlayersGameRequestPubSub;
 import eu.macsworks.projectnhm.nhmProxy.redis.pubsub.impl.PlayersLobbyPubSub;
@@ -11,13 +14,13 @@ import lombok.Getter;
 
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Getter
 public class RedisManager extends NHMProxyManager {
 
     private RedisHandler redisHandler;
+    private HeartbeatHandler heartbeatHandler;
 
     private PlayersLobbyPubSub playersLobbyPubSub;
     private PlayersGameRequestPubSub playersGameRequestPubSub;
@@ -30,10 +33,17 @@ public class RedisManager extends NHMProxyManager {
     @Override
     public void onInit(){
         redisHandler = new RedisHandler(getMainInstance(), getMainInstance().getProxy(), getMainInstance().getConfig());
+        heartbeatHandler = new HeartbeatHandler(redisHandler);
 
         playersLobbyPubSub = new PlayersLobbyPubSub();
         playersGameRequestPubSub = new PlayersGameRequestPubSub();
         playersServerPubSub = new PlayersServerPubSub();
+    }
+
+    @Override
+    public void onTick(){
+        heartbeatHandler.gatherGameHeartbeats();
+        heartbeatHandler.gatherLobbyHeartbeats();
     }
 
     @Override
@@ -53,14 +63,12 @@ public class RedisManager extends NHMProxyManager {
                 .collect(Collectors.toList());
     }
 
-    public record HeartbeatPayload(List<GameSnapshot> games, double tps, long mspt, int totalPlayers){
-        record GameSnapshot(String serverID, String gameID, String gameType, List<UUID> players, int minPlayers, int maxPlayers, RedisGameState gameState){}
+    public List<HeartbeatPayload.GameSnapshot> getAllGameSnapshots(){
+        return getHeartbeatHandler().getAllGames();
+    }
 
-        enum RedisGameState {
-            LOBBY,
-            IN_PROGRESS,
-            ENDED
-        }
+    public List<LobbyHeartbeatPayload> getAllLobbyHeartbeats(){
+        return getHeartbeatHandler().getAllLobbies();
     }
 
 }
