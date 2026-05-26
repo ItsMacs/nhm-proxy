@@ -1,17 +1,22 @@
-package eu.macsworks.projectnhm.nhmProxy.redis.pubsub;
+package eu.macsworks.projectnhm.nhmProxy.redis.pubsub.impl;
 
+import com.velocitypowered.api.proxy.Player;
+import eu.macsworks.projectnhm.nhmProxy.NhmProxy;
+import eu.macsworks.projectnhm.nhmProxy.managers.impl.ServerManager;
+import eu.macsworks.projectnhm.nhmProxy.redis.pubsub.NHMPubSub;
 import eu.macsworks.projectnhm.nhmProxy.utils.SignatureUtils;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import redis.clients.jedis.JedisPubSub;
 
+import java.util.Optional;
 import java.util.UUID;
 
-@RequiredArgsConstructor
-public class PlayersLobbyPubSub extends JedisPubSub {
+public class PlayersLobbyPubSub extends NHMPubSub {
 
-    @Getter
-    private final String channel;
+    private final NhmProxy mainInstance;
+    public PlayersLobbyPubSub() {
+        super("nhm-games:player-lobbys");
+
+        mainInstance = NhmProxy.getInstance();
+    }
 
     @Override
     public void onMessage(String channel, String message) {
@@ -21,11 +26,26 @@ public class PlayersLobbyPubSub extends JedisPubSub {
         String payload = message.substring(0, message.lastIndexOf(":"));
         String[] splits = message.split(":");
 
+        if(splits.length != 4) return;
+
         UUID playerUUID = UUID.fromString(splits[0]);
         String originServer = splits[1];
         long epoch = Long.parseLong(splits[2]);
+        String signature = splits[3];
 
-        if(!SignatureUtils.isSignatureValid(payload, ))
+        if(!SignatureUtils.isSignatureValid(payload, signature)) {
+            mainInstance.getLogger().error("Invalid redis signature received: {}", message);
+            return;
+        }
+
+        sendPlayerToLobby(playerUUID);
+    }
+
+    private void sendPlayerToLobby(UUID playerUUID) {
+        Optional<Player> player = mainInstance.getProxy().getPlayer(playerUUID);
+        if(player.isEmpty()) return;
+
+        mainInstance.getManager(ServerManager.class).sendPlayerToLobby(player.get());
     }
 
 }

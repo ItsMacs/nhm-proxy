@@ -11,6 +11,19 @@ repositories {
 
 dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
+
+    //Lombok
+    compileOnly("org.projectlombok:lombok:1.18.46")
+    annotationProcessor("org.projectlombok:lombok:1.18.46")
+
+    testCompileOnly("org.projectlombok:lombok:1.18.46")
+    testAnnotationProcessor("org.projectlombok:lombok:1.18.46")
+
+    //Jedis
+    implementation("redis.clients:jedis:7.1.0")
+
+    //Apache Commons
+    implementation("commons-codec:commons-codec:1.15")
 }
 
 java {

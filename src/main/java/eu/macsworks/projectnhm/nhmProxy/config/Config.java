@@ -10,33 +10,33 @@ import java.util.Properties;
 
 public class Config {
 
-    private final Path file;
     private final Properties props = new Properties();
 
     public Config(Path dataDirectory, String fileName, Map<String, String> defaults) throws IOException {
         Files.createDirectories(dataDirectory);
-        this.file = dataDirectory.resolve(fileName);
+        Path file = dataDirectory.resolve(fileName);
 
         if (Files.notExists(file)) {
             defaults.forEach(props::setProperty);
+            OutputStream out = Files.newOutputStream(file);
+            props.store(out, fileName);
+            out.close();
+        }
+
+        try (InputStream in = Files.newInputStream(file)) {
+            props.load(in);
+        }
+        boolean updated = false;
+        for (Map.Entry<String, String> entry : defaults.entrySet()) {
+            if (!props.containsKey(entry.getKey())) {
+                props.setProperty(entry.getKey(), entry.getValue());
+                updated = true;
+            }
+        }
+
+        if (updated) {
             try (OutputStream out = Files.newOutputStream(file)) {
                 props.store(out, fileName);
-            }
-        } else {
-            try (InputStream in = Files.newInputStream(file)) {
-                props.load(in);
-            }
-            boolean updated = false;
-            for (Map.Entry<String, String> entry : defaults.entrySet()) {
-                if (!props.containsKey(entry.getKey())) {
-                    props.setProperty(entry.getKey(), entry.getValue());
-                    updated = true;
-                }
-            }
-            if (updated) {
-                try (OutputStream out = Files.newOutputStream(file)) {
-                    props.store(out, fileName);
-                }
             }
         }
     }

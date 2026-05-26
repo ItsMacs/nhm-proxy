@@ -1,4 +1,4 @@
-package eu.macsworks.projectnhm.games.nhmGames.utils;
+package eu.macsworks.projectnhm.nhmProxy.utils;
 
 import lombok.experimental.UtilityClass;
 import org.apache.commons.codec.digest.HmacAlgorithms;
