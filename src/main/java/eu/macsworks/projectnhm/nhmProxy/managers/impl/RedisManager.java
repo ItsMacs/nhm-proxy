@@ -33,12 +33,12 @@ public class RedisManager extends NHMProxyManager {
 
     @Override
     public void onInit(){
-        redisHandler = new RedisHandler(getMainInstance(), getMainInstance().getProxy(), getMainInstance().getConfig());
-        heartbeatHandler = new HeartbeatHandler(redisHandler);
-
         playersLobbyPubSub = new PlayersLobbyPubSub();
         playersGameRequestPubSub = new PlayersGameRequestPubSub();
         playersServerPubSub = new PlayersServerPubSub();
+
+        redisHandler = new RedisHandler(getMainInstance(), getMainInstance().getProxy(), getMainInstance().getConfig());
+        heartbeatHandler = new HeartbeatHandler(redisHandler);
     }
 
     @Override

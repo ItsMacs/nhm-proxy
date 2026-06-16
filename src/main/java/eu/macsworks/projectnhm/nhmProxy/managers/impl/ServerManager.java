@@ -64,6 +64,7 @@ public class ServerManager extends NHMProxyManager {
         missingServers.forEach(missingServerID -> {
             Optional<RegisteredServer> missingServer = getMainInstance().getProxy().getServer(missingServerID);
             if(missingServer.isEmpty()){ //What the actual fuck
+                removeServerReference(missingServerID);
                 return;
             }
 
@@ -71,9 +72,13 @@ public class ServerManager extends NHMProxyManager {
             missingServer.get().getPlayersConnected().forEach(this::sendPlayerToLobby);
 
             getMainInstance().getProxy().unregisterServer(missingServer.get().getServerInfo());
-            lobbyPods.removeIf(server -> server.serverID().equals(missingServerID));
-            gamePods.removeIf(server -> server.serverID().equals(missingServerID));
+            removeServerReference(missingServerID);
         });
+    }
+
+    private void removeServerReference(String serverID){
+        lobbyPods.removeIf(server -> server.serverID().equals(serverID));
+        gamePods.removeIf(server -> server.serverID().equals(serverID));
     }
 
     public void sendPlayerToLobby(Player player){
