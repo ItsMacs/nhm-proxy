@@ -2,12 +2,14 @@ package eu.macsworks.projectnhm.nhmProxy.managers.impl;
 
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import com.velocitypowered.api.proxy.server.ServerInfo;
 import eu.macsworks.projectnhm.nhmProxy.NhmProxy;
 import eu.macsworks.projectnhm.nhmProxy.managers.NHMProxyManager;
 import eu.macsworks.projectnhm.nhmProxy.pojo.payloads.HeartbeatPayload;
 import eu.macsworks.projectnhm.nhmProxy.pojo.servers.NHMServer;
 import net.kyori.adventure.text.Component;
 
+import java.net.InetSocketAddress;
 import java.util.*;
 
 public class ServerManager extends NHMProxyManager {
@@ -114,10 +116,18 @@ public class ServerManager extends NHMProxyManager {
 
     public void addTrackedLobbyPod(NHMServer server){
         lobbyPods.add(server);
+
+        registerServer(server);
     }
 
     public void addTrackedGamePod(NHMServer server){
         gamePods.add(server);
+
+        registerServer(server);
+    }
+
+    private void registerServer(NHMServer server){
+        NhmProxy.getInstance().getProxy().registerServer(new ServerInfo(server.serverID(), InetSocketAddress.createUnresolved(server.serverIP(), server.serverPort())));
     }
 
     /**
