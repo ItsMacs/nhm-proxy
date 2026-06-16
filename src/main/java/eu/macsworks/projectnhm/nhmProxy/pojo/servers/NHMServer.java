@@ -12,7 +12,7 @@ public record NHMServer(String serverID, String serverIP, int serverPort, int ma
     }
 
     public boolean isFull() {
-        return getPlayerCount() < maxPlayers;
+        return getPlayerCount() >= maxPlayers;
     }
 
     public Optional<RegisteredServer> getProxyServerInstance() {

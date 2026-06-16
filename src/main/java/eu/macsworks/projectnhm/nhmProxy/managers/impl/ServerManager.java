@@ -11,6 +11,8 @@ import net.kyori.adventure.text.Component;
 
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ServerManager extends NHMProxyManager {
 
@@ -28,11 +30,6 @@ public class ServerManager extends NHMProxyManager {
     }
 
     @Override
-    public void onInit(){
-
-    }
-
-    @Override
     public void onTick(){
         games.clear();
         games.addAll(redisManager.getAllGameSnapshots());
@@ -40,37 +37,29 @@ public class ServerManager extends NHMProxyManager {
         manageDeadPods();
     }
 
-    @Override
-    public void onDestroy(){
-
-    }
-
     private void manageDeadPods(){
-        List<NHMServer> activeServers = new ArrayList<>();
-
         List<NHMServer> activeLobbyPods = redisManager.getActiveServers(false);
         List<NHMServer> activeGamePods = redisManager.getActiveServers(true);
 
-        activeServers.addAll(activeLobbyPods);
-        activeServers.addAll(activeGamePods);
+        Set<String> activeServerIds = Stream.concat(activeLobbyPods.stream(), activeGamePods.stream())
+                .map(NHMServer::serverID)
+                .collect(Collectors.toSet());
 
         activeLobbyPods.stream().filter(s -> !lobbyPods.contains(s)).forEach(this::addTrackedLobbyPod);
         activeGamePods.stream().filter(s -> !gamePods.contains(s)).forEach(this::addTrackedGamePod);
 
         List<String> missingServers = new ArrayList<>();
-        missingServers.addAll(lobbyPods.stream().map(NHMServer::serverID).filter(s -> !activeServers.contains(s)).toList());
-        missingServers.addAll(gamePods.stream().map(NHMServer::serverID).filter(s -> !activeServers.contains(s)).toList());
+        missingServers.addAll(lobbyPods.stream().map(NHMServer::serverID).filter(s -> !activeServerIds.contains(s)).toList());
+        missingServers.addAll(gamePods.stream().map(NHMServer::serverID).filter(s -> !activeServerIds.contains(s)).toList());
 
         missingServers.forEach(missingServerID -> {
             Optional<RegisteredServer> missingServer = getMainInstance().getProxy().getServer(missingServerID);
-            if(missingServer.isEmpty()){ //What the actual fuck
+            if(missingServer.isEmpty()){
                 removeServerReference(missingServerID);
                 return;
             }
 
-            //We have to reroute these players to the best lobby server and nuke the old lobby ref
             missingServer.get().getPlayersConnected().forEach(this::sendPlayerToLobby);
-
             getMainInstance().getProxy().unregisterServer(missingServer.get().getServerInfo());
             removeServerReference(missingServerID);
         });
