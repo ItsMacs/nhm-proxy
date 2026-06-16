@@ -2,8 +2,8 @@ package eu.macsworks.projectnhm.nhmProxy.redis;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import eu.macsworks.projectnhm.nhmProxy.pojo.HeartbeatPayload;
-import eu.macsworks.projectnhm.nhmProxy.pojo.LobbyHeartbeatPayload;
+import eu.macsworks.projectnhm.nhmProxy.pojo.payloads.HeartbeatPayload;
+import eu.macsworks.projectnhm.nhmProxy.pojo.payloads.LobbyHeartbeatPayload;
 import lombok.Getter;
 
 import java.util.HashMap;
@@ -62,6 +62,10 @@ public class HeartbeatHandler {
         return heartbeats.values().stream()
                 .flatMap(payload -> payload.games().stream())
                 .toList();
+    }
+
+    public List<HeartbeatPayload> getAllGamePods(){
+        return heartbeats.values().stream().toList();
     }
 
     public List<LobbyHeartbeatPayload> getAllLobbies(){

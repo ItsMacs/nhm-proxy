@@ -4,15 +4,16 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import eu.macsworks.projectnhm.nhmProxy.NhmProxy;
 import eu.macsworks.projectnhm.nhmProxy.managers.NHMProxyManager;
-import eu.macsworks.projectnhm.nhmProxy.pojo.HeartbeatPayload;
+import eu.macsworks.projectnhm.nhmProxy.pojo.payloads.HeartbeatPayload;
+import eu.macsworks.projectnhm.nhmProxy.pojo.servers.NHMServer;
 import net.kyori.adventure.text.Component;
 
 import java.util.*;
 
 public class ServerManager extends NHMProxyManager {
 
-    private final List<String> lobbyPods = new ArrayList<>();
-    private final List<String> gamePods = new ArrayList<>();
+    private final List<NHMServer> lobbyPods = new ArrayList<>();
+    private final List<NHMServer> gamePods = new ArrayList<>();
 
     private final List<HeartbeatPayload.GameSnapshot> games = new ArrayList<>();
 
@@ -43,10 +44,10 @@ public class ServerManager extends NHMProxyManager {
     }
 
     private void manageDeadPods(){
-        List<String> activeServers = new ArrayList<>();
+        List<NHMServer> activeServers = new ArrayList<>();
 
-        List<String> activeLobbyPods = redisManager.getActiveServers(false);
-        List<String> activeGamePods = redisManager.getActiveServers(true);
+        List<NHMServer> activeLobbyPods = redisManager.getActiveServers(false);
+        List<NHMServer> activeGamePods = redisManager.getActiveServers(true);
 
         activeServers.addAll(activeLobbyPods);
         activeServers.addAll(activeGamePods);
@@ -55,8 +56,8 @@ public class ServerManager extends NHMProxyManager {
         activeGamePods.stream().filter(s -> !gamePods.contains(s)).forEach(this::addTrackedGamePod);
 
         List<String> missingServers = new ArrayList<>();
-        missingServers.addAll(lobbyPods.stream().filter(s -> !activeServers.contains(s)).toList());
-        missingServers.addAll(gamePods.stream().filter(s -> !activeServers.contains(s)).toList());
+        missingServers.addAll(lobbyPods.stream().map(NHMServer::serverID).filter(s -> !activeServers.contains(s)).toList());
+        missingServers.addAll(gamePods.stream().map(NHMServer::serverID).filter(s -> !activeServers.contains(s)).toList());
 
         missingServers.forEach(missingServerID -> {
             Optional<RegisteredServer> missingServer = getMainInstance().getProxy().getServer(missingServerID);
@@ -68,8 +69,8 @@ public class ServerManager extends NHMProxyManager {
             missingServer.get().getPlayersConnected().forEach(this::sendPlayerToLobby);
 
             getMainInstance().getProxy().unregisterServer(missingServer.get().getServerInfo());
-            lobbyPods.remove(missingServerID);
-            gamePods.remove(missingServerID);
+            lobbyPods.removeIf(server -> server.serverID().equals(missingServerID));
+            gamePods.removeIf(server -> server.serverID().equals(missingServerID));
         });
     }
 
@@ -97,7 +98,7 @@ public class ServerManager extends NHMProxyManager {
 
     private void sendPlayerToGame(Player player, Optional<HeartbeatPayload.GameSnapshot> gameSnapshot){
         if(gameSnapshot.isEmpty()){
-            player.sendMessage(Component.text(String.format("Error: Game not found. Wait a few seconds and retry.")));
+            player.sendMessage(Component.text("Error: Game not found. Wait a few seconds and retry."));
             return;
         }
 
@@ -111,16 +112,32 @@ public class ServerManager extends NHMProxyManager {
         player.createConnectionRequest(gamePod.get()).fireAndForget();
     }
 
-    public void addTrackedLobbyPod(String server){
+    public void addTrackedLobbyPod(NHMServer server){
         lobbyPods.add(server);
     }
 
-    public void addTrackedGamePod(String server){
+    public void addTrackedGamePod(NHMServer server){
         gamePods.add(server);
     }
 
+    /**
+     * Returns the fullest (whilst not fully full) lobby server and automatically removes the ones that aren't found by
+     * the proxy from the list. Recurses until either a server is found, or the list becomes empty.
+     * @return Hopefully, the fullest non-full lobby server in the network
+     */
     public Optional<RegisteredServer> getBestLobbyServer(){
-        return getLobbyServerPods().stream().max(Comparator.comparingInt(server -> server.getPlayersConnected().size()));
+        Optional<NHMServer> srv = lobbyPods.stream()
+                .filter(server -> !server.isFull() && server.getProxyServerInstance().isPresent())
+                .max(Comparator.comparingInt(NHMServer::getPlayerCount));
+
+        if(srv.isEmpty()) return Optional.empty();
+
+        if(srv.get().getProxyServerInstance().isEmpty()){
+            lobbyPods.remove(srv.get());
+            return getBestLobbyServer();
+        }
+
+        return srv.get().getProxyServerInstance();
     }
 
     public Optional<HeartbeatPayload.GameSnapshot> getBestGameServer(String gameMode){
@@ -130,20 +147,6 @@ public class ServerManager extends NHMProxyManager {
                         && snapshot.gameState() == HeartbeatPayload.RedisGameState.LOBBY)
 
                 .max(Comparator.comparingInt(snapshot -> snapshot.players().size()));
-    }
-
-    public List<RegisteredServer> getLobbyServerPods(){
-        return getMainInstance().getProxy().getAllServers()
-                .stream()
-                .filter(server -> lobbyPods.contains(server.getServerInfo().getName()))
-                .toList();
-    }
-
-    public List<RegisteredServer> getGameServerPods(){
-        return getMainInstance().getProxy().getAllServers()
-                .stream()
-                .filter(server -> gamePods.contains(server.getServerInfo().getName()))
-                .toList();
     }
 
 }

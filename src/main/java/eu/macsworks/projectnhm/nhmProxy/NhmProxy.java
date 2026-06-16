@@ -69,7 +69,7 @@ public class NhmProxy {
         addManager(new ServerManager(this));
 
         tasks.add(getProxy().getScheduler().buildTask(this, () -> {
-
+            managers.values().forEach(NHMProxyManager::onTick);
         }).repeat(Duration.ofMillis(500)).schedule());
     }
 

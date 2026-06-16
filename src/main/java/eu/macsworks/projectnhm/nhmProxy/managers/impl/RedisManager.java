@@ -3,8 +3,9 @@ package eu.macsworks.projectnhm.nhmProxy.managers.impl;
 import com.velocitypowered.api.proxy.Player;
 import eu.macsworks.projectnhm.nhmProxy.NhmProxy;
 import eu.macsworks.projectnhm.nhmProxy.managers.NHMProxyManager;
-import eu.macsworks.projectnhm.nhmProxy.pojo.HeartbeatPayload;
-import eu.macsworks.projectnhm.nhmProxy.pojo.LobbyHeartbeatPayload;
+import eu.macsworks.projectnhm.nhmProxy.pojo.payloads.HeartbeatPayload;
+import eu.macsworks.projectnhm.nhmProxy.pojo.payloads.LobbyHeartbeatPayload;
+import eu.macsworks.projectnhm.nhmProxy.pojo.servers.NHMServer;
 import eu.macsworks.projectnhm.nhmProxy.redis.HeartbeatHandler;
 import eu.macsworks.projectnhm.nhmProxy.redis.RedisHandler;
 import eu.macsworks.projectnhm.nhmProxy.redis.pubsub.impl.PlayersGameRequestPubSub;
@@ -55,12 +56,10 @@ public class RedisManager extends NHMProxyManager {
         playersServerPubSub.sendToGame(player, serverID, gameID);
     }
 
-    public List<String> getActiveServers(boolean game){
-        String prefix = game ? "nhm-game-pods:" : "nhm-lobby-pods:";
-        Set<String> keys = redisHandler.keys(prefix + "*");
-        return keys.stream()
-                .map(k -> k.substring(prefix.length()))
-                .collect(Collectors.toList());
+    public List<NHMServer> getActiveServers(boolean game){
+        if(game) return getHeartbeatHandler().getAllGamePods().stream().map(HeartbeatPayload::toServer).toList();
+
+        return getHeartbeatHandler().getAllLobbies().stream().map(LobbyHeartbeatPayload::toServer).toList();
     }
 
     public List<HeartbeatPayload.GameSnapshot> getAllGameSnapshots(){
